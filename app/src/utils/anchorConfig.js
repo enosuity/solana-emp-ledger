@@ -1,37 +1,35 @@
+// initializeProgram.js
 import { AnchorProvider, Program } from "@project-serum/anchor";
-import { Connection, Keypair, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { BN } from "@project-serum/anchor";
 import idl from '../idl.json'; // Ensure correct path
+import { generateRandomKeypair } from './keypairUtils'; // Import the keypair generation function
 
 export const initializeProgram = async () => {
   try {
-    // Setting up the network connection
     const network = "http://127.0.0.1:8899"; // Local test validator
     const connection = new Connection(network, "confirmed");
 
-    // Log connection details
     console.log("Connection established:", connection);
 
-    // Get the wallet (Phantom wallet in this case)
+    // Ensure Phantom wallet is connected
     const wallet = window.solana;
-    if (!wallet.publicKey) {
+    if (!wallet || !wallet.publicKey) {
       console.error("Wallet is not connected.");
       return null;
     }
 
-    // Setup Anchor provider
+    // Set up Anchor provider
     const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
     console.log("Provider initialized", provider);
 
-    // Program ID
+    // Define program ID
     const programId = new PublicKey("6PMijRajWR4SCmtscLSefMV2AqLx2JV5ii5xa7GQBkL1");
-
-    // Load the IDL
     const program = new Program(idl, programId, provider);
     console.log("Program initialized:", program);
 
-    // Generate a new account keypair
-    const newAccount = Keypair.generate();
+    // Generate a new random account using the separate utility function
+    const newAccount = generateRandomKeypair();
     const newAccountPublicKey = newAccount.publicKey;
     const signerPublicKey = wallet.publicKey;
 
@@ -56,8 +54,4 @@ export const initializeProgram = async () => {
   }
 };
 
-// Function to generate a random Solana keypair
-export const generateRandomKeypair = () => {
-  const keypair = Keypair.generate();
-  return keypair;
-};
+export {generateRandomKeypair}

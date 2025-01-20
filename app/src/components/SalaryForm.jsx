@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { initializeProgram, generateRandomKeypair } from "../utils/anchorConfig";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import BN from "bn.js"; // Import BN from bn.js
+import { BN } from "@project-serum/anchor"; // Import BN from Anchor's package
 
 const SalaryForm = () => {
   const [program, setProgram] = useState(null);
@@ -9,39 +9,43 @@ const SalaryForm = () => {
   const [salary, setSalary] = useState("");
   const [message, setMessage] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
-  const [showWalletMessage, setShowWalletMessage] = useState(true); // State to control message visibility
+  const [showWalletMessage, setShowWalletMessage] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initProgram = async () => {
       try {
         if (!window.solana) {
           console.error("No Solana provider found. Please install Phantom wallet.");
+          setMessage("No Solana provider found.");
           return;
         }
-        
+
         const wallet = window.solana;
-        const connected = await wallet.connect(); // Ensure wallet is connected
-        if (!connected) {
-          console.error("Wallet not connected");
-          return;
+        if (!wallet.isConnected) {
+          await wallet.connect(); // Ensure wallet is connected
         }
-  
+
+        // Initialize the program
         const programInstance = await initializeProgram();
-        setProgram(programInstance);
-  
-        console.log("Program initialized:", programInstance); // Program instance should be logged here
-  
-        // Set the wallet address
+        if (programInstance) {
+          setProgram(programInstance);
+          console.log("Program initialized:", programInstance);
+          setLoading(false);
+        } else {
+          console.error("Failed to initialize program.");
+          setMessage("Failed to initialize program.");
+        }
+
         setWalletAddress(wallet.publicKey.toString());
-  
       } catch (error) {
         console.error("Error initializing program:", error);
+        setMessage("Error initializing program.");
       }
     };
-  
+
     initProgram();
   }, []);
-  
 
   const handleGenerateAddress = () => {
     const keypair = generateRandomKeypair();
@@ -50,6 +54,11 @@ const SalaryForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (loading) {
+      setMessage("Program is still initializing...");
+      return;
+    }
     if (!program) {
       setMessage("Program is not initialized yet.");
       return;
@@ -60,12 +69,16 @@ const SalaryForm = () => {
     }
 
     try {
-    //   const connection = program.provider.connection;
+      // Convert salary to BN (BigNumber)
+      const salaryBN = new BN(salary);
+
+      // Ensure newAccount is a valid PublicKey
+      const newAccountPublicKey = new PublicKey(newAddress);
 
       // Create a transaction
-      const tx = await program.rpc.initialize(new BN(salary), {
+      const tx = await program.rpc.initialize(salaryBN, {
         accounts: {
-          newAccount: new PublicKey(newAddress), // Generated address
+          newAccount: newAccountPublicKey, // Generated address
           signer: program.provider.wallet.publicKey, // Wallet address
           systemProgram: SystemProgram.programId, // System program
         },
@@ -80,7 +93,6 @@ const SalaryForm = () => {
   };
 
   useEffect(() => {
-    // If a wallet is connected or not, show the message for 3 seconds and then hide it
     if (walletAddress) {
       setShowWalletMessage(true);
       setTimeout(() => setShowWalletMessage(false), 3000);

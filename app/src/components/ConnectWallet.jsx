@@ -1,8 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./ConnectWallet.module.css";
 
 const ConnectWallet = () => {
   const [walletAddress, setWalletAddress] = useState(null);
+
+  // Check if Phantom wallet is already connected when component mounts
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+      if (window.solana && window.solana.isPhantom) {
+        try {
+          const connected = await window.solana.isConnected;
+          if (connected) {
+            const publicKey = window.solana.publicKey.toString();
+            setWalletAddress(publicKey);
+            console.log("Already connected to wallet:", publicKey);
+          }
+        } catch (err) {
+          console.error("Error checking connection:", err);
+        }
+      }
+    };
+
+    checkWalletConnection();
+  }, []);
 
   const connectWallet = async () => {
     if (window.solana && window.solana.isPhantom) {
@@ -14,7 +34,7 @@ const ConnectWallet = () => {
         console.error("Wallet connection failed:", err);
       }
     } else {
-      alert("Install Phantom wallet!!!");
+      alert("Please install Phantom Wallet!");
     }
   };
 
@@ -39,3 +59,4 @@ const ConnectWallet = () => {
 };
 
 export default ConnectWallet;
+
