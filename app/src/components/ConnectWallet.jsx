@@ -1,62 +1,93 @@
-import React, { useState, useEffect } from "react";
-import styles from "./ConnectWallet.module.css";
+import React, { useState } from 'react';
+import { generateRandomAddress } from '../utils/keypair';
+import { sendTransaction } from '../utils/transactions';
 
-const ConnectWallet = () => {
-  const [walletAddress, setWalletAddress] = useState(null);
+const SalaryForm = ({ wallet, setWallet }) => {
+    const [address, setAddress] = useState('');
+    const [salary, setSalary] = useState('');
+    const [transactionId, setTransactionId] = useState('');
 
-  // Check if Phantom wallet is already connected when component mounts
-  useEffect(() => {
-    const checkWalletConnection = async () => {
-      if (window.solana && window.solana.isPhantom) {
-        try {
-          const connected = await window.solana.isConnected;
-          if (connected) {
-            const publicKey = window.solana.publicKey.toString();
-            setWalletAddress(publicKey);
-            console.log("Already connected to wallet:", publicKey);
-          }
-        } catch (err) {
-          console.error("Error checking connection:", err);
-        }
-      }
+    // Function to generate a random address
+    const handleGenerateAddress = () => {
+        const randomAddress = generateRandomAddress();
+        setAddress(randomAddress);
     };
 
-    checkWalletConnection();
-  }, []);
+    // Function to handle form submission
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-  const connectWallet = async () => {
-    if (window.solana && window.solana.isPhantom) {
-      try {
-        const response = await window.solana.connect();
-        setWalletAddress(response.publicKey.toString());
-        console.log("Connected to wallet:", response.publicKey.toString());
-      } catch (err) {
-        console.error("Wallet connection failed:", err);
-      }
-    } else {
-      alert("Please install Phantom Wallet!");
-    }
-  };
+        if (!wallet || !wallet.publicKey) {
+            alert('Please connect your wallet first!');
+            return;
+        }
 
-  const disconnectWallet = () => {
-    setWalletAddress(null);
-    console.log("Disconnected your wallet.");
-  };
+        if (!salary || isNaN(parseFloat(salary)) || parseFloat(salary) <= 0) {
+            alert('Please enter a valid salary amount greater than 0!');
+            return;
+        }
 
-  return (
-    <div className={styles.header}>
-      <h1 className={styles.title}>
-        {walletAddress ? "Your wallet is connected" : "Connect your Wallet"}
-      </h1>
-      <button
-        className={styles.button}
-        onClick={walletAddress ? disconnectWallet : connectWallet}
-      >
-        {walletAddress ? "Disconnect" : "Connect Wallet"}
-      </button>
-    </div>
-  );
+        try {
+            const amount = parseInt(salary, 10); // Convert salary to an integer
+            const txId = await sendTransaction(wallet, address, amount);
+            setTransactionId(txId);
+            alert('Transaction successful! ID: ' + txId);
+        } catch (error) {
+            console.error('Transaction failed:', error);
+            alert('Transaction failed!');
+        }
+    };
+
+    // Wallet connection logic
+    const connectWallet = async () => {
+        try {
+            if (window.solana) {
+                const response = await window.solana.connect();
+                setWallet(response); // Store wallet instance in state
+            } else {
+                alert('Phantom wallet not found. Please install it first.');
+            }
+        } catch (error) {
+            console.error('Error connecting to wallet:', error);
+            alert('Wallet connection failed!');
+        }
+    };
+
+    return (
+        <div>
+            {!wallet ? (
+                <div>
+                    <button onClick={connectWallet}>Connect Wallet</button>
+                    <p>If you don't have a wallet, install Phantom wallet first.</p>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit}>
+                    <div>
+                        <label>Address:</label>
+                        <input type="text" value={address} readOnly />
+                        <button type="button" onClick={handleGenerateAddress}>
+                            Generate New Address
+                        </button>
+                    </div>
+                    <div>
+                        <label>Salary:</label>
+                        <input
+                            type="number"
+                            value={salary}
+                            onChange={(e) => setSalary(e.target.value)}
+                            placeholder="Enter salary in SOL"
+                        />
+                    </div>
+                    <button type="submit">Submit Transaction</button>
+                </form>
+            )}
+            {transactionId && (
+                <p>
+                    Transaction successful! ID: <code>{transactionId}</code>
+                </p>
+            )}
+        </div>
+    );
 };
 
-export default ConnectWallet;
-
+export default SalaryForm;

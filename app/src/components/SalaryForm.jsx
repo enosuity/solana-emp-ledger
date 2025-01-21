@@ -1,139 +1,93 @@
-import React, { useState, useEffect } from "react";
-import { initializeProgram, generateRandomKeypair } from "../utils/anchorConfig";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { BN } from "@project-serum/anchor"; // Import BN from Anchor's package
+import React, { useState, useEffect } from 'react';
+import { generateRandomAddress } from '../utils/keypair';
+import { sendTransaction } from '../utils/transactions';
 
-const SalaryForm = () => {
-  const [program, setProgram] = useState(null);
-  const [newAddress, setNewAddress] = useState("");
-  const [salary, setSalary] = useState("");
-  const [message, setMessage] = useState("");
-  const [walletAddress, setWalletAddress] = useState("");
-  const [showWalletMessage, setShowWalletMessage] = useState(true);
-  const [loading, setLoading] = useState(true);
+const SalaryForm = ({ wallet, setWallet }) => {
+    const [address, setAddress] = useState('');
+    const [salary, setSalary] = useState('');
+    const [transactionId, setTransactionId] = useState('');
 
-  useEffect(() => {
-    const initProgram = async () => {
-      try {
-        if (!window.solana) {
-          console.error("No Solana provider found. Please install Phantom wallet.");
-          setMessage("No Solana provider found.");
-          return;
-        }
-
-        const wallet = window.solana;
-        if (!wallet.isConnected) {
-          await wallet.connect(); // Ensure wallet is connected
-        }
-
-        // Initialize the program
-        const programInstance = await initializeProgram();
-        if (programInstance) {
-          setProgram(programInstance);
-          console.log("Program initialized:", programInstance);
-          setLoading(false);
-        } else {
-          console.error("Failed to initialize program.");
-          setMessage("Failed to initialize program.");
-        }
-
-        setWalletAddress(wallet.publicKey.toString());
-      } catch (error) {
-        console.error("Error initializing program:", error);
-        setMessage("Error initializing program.");
-      }
+    // Function to generate a random address (for demo purposes)
+    const handleGenerateAddress = () => {
+        const randomAddress = generateRandomAddress();
+        setAddress(randomAddress);
     };
 
-    initProgram();
-  }, []);
+    // Function to handle submitting the form
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!wallet || !wallet.publicKey) {
+            alert('Please connect your wallet first!');
+            return;
+        }
+        try {
+            const txId = await sendTransaction(wallet, address, parseInt(salary) * 1e9); // Convert SOL to lamports
+            setTransactionId(txId);
+            alert('Transaction successful! ID: ' + txId);
+        } catch (error) {
+            console.error('Transaction failed:', error);
+            alert('Transaction failed!');
+        }
+    };
 
-  const handleGenerateAddress = () => {
-    const keypair = generateRandomKeypair();
-    setNewAddress(keypair.publicKey.toString());
-  };
+    // Wallet connection logic
+    const connectWallet = async () => {
+        try {
+            if (window.solana && window.solana.isPhantom) {
+                const response = await window.solana.connect();
+                console.log('Wallet connected:', response.publicKey.toString());
+                setWallet(window.solana); // Save the wallet instance
+            } else {
+                alert('Phantom wallet not found. Please install it.');
+            }
+        } catch (error) {
+            console.error('Error connecting wallet:', error);
+            alert('Failed to connect wallet.');
+        }
+    };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    // Effect to check if wallet is connected
+    useEffect(() => {
+        if (!wallet) {
+            console.log('No wallet connected');
+        } else {
+            console.log('Wallet is connected:', wallet.publicKey ? wallet.publicKey.toString() : 'No public key');
+        }
+    }, [wallet]);
 
-    if (loading) {
-      setMessage("Program is still initializing...");
-      return;
-    }
-    if (!program) {
-      setMessage("Program is not initialized yet.");
-      return;
-    }
-    if (!newAddress || !salary) {
-      setMessage("Please generate an address and enter a salary.");
-      return;
-    }
-
-    try {
-      // Convert salary to BN (BigNumber)
-      const salaryBN = new BN(salary);
-
-      // Ensure newAccount is a valid PublicKey
-      const newAccountPublicKey = new PublicKey(newAddress);
-
-      // Create a transaction
-      const tx = await program.rpc.initialize(salaryBN, {
-        accounts: {
-          newAccount: newAccountPublicKey, // Generated address
-          signer: program.provider.wallet.publicKey, // Wallet address
-          systemProgram: SystemProgram.programId, // System program
-        },
-        signers: [],
-      });
-
-      setMessage(`Transaction successful! Transaction ID: ${tx}`);
-    } catch (error) {
-      console.error("Error during transaction:", error);
-      setMessage("Transaction failed. See console for details.");
-    }
-  };
-
-  useEffect(() => {
-    if (walletAddress) {
-      setShowWalletMessage(true);
-      setTimeout(() => setShowWalletMessage(false), 3000);
-    } else {
-      setShowWalletMessage(true);
-    }
-  }, [walletAddress]);
-
-  return (
-    <div>
-      <h2>Salary Form</h2>
-      {showWalletMessage && (
-        <p>{walletAddress ? "Wallet is Connected." : "Please connect your wallet."}</p>
-      )}
-      <form onSubmit={handleSubmit}>
+    return (
         <div>
-          <label>Generated Address:</label>
-          <input
-            type="text"
-            value={newAddress}
-            readOnly
-            placeholder="Click 'Generate' to create an address"
-          />
-          <button type="button" onClick={handleGenerateAddress}>
-            Generate Address
-          </button>
+            {!wallet ? (
+                <div>
+                    <button onClick={connectWallet}>Connect Wallet</button>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit}>
+                    <div>
+                        <label>Address:</label>
+                        <input type="text" value={address} readOnly />
+                        <button type="button" onClick={handleGenerateAddress}>
+                            Generate New Address
+                        </button>
+                    </div>
+                    <div>
+                        <label>Salary:</label>
+                        <input
+                            type="number"
+                            value={salary}
+                            onChange={(e) => setSalary(e.target.value)}
+                        />
+                    </div>
+                    <button type="submit">Submit Transaction</button>
+                </form>
+            )}
+            {transactionId && (
+                <p>
+                    Transaction successful! ID: <code>{transactionId}</code>
+                </p>
+            )}
         </div>
-        <div>
-          <label>Salary:</label>
-          <input
-            type="number"
-            value={salary}
-            onChange={(e) => setSalary(e.target.value)}
-            placeholder="Enter salary"
-          />
-        </div>
-        <button type="submit">Submit</button>
-      </form>
-      {message && <p>{message}</p>}
-    </div>
-  );
+    );
 };
 
 export default SalaryForm;

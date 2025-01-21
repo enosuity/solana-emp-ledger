@@ -1,4 +1,10 @@
-{
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/mysolanaapp.json`.
+ */
+export type Mysolanaapp = {
   "address": "6PMijRajWR4SCmtscLSefMV2AqLx2JV5ii5xa7GQBkL1",
   "metadata": {
     "name": "mysolanaapp",
@@ -21,7 +27,7 @@
       ],
       "accounts": [
         {
-          "name": "new_account",
+          "name": "newAccount",
           "writable": true,
           "signer": true
         },
@@ -31,13 +37,13 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "data",
+          "name": "salary",
           "type": "u64"
         }
       ]
@@ -45,31 +51,35 @@
   ],
   "accounts": [
     {
-      "name": "NewAccount",
+      "name": "salaryAccount",
       "discriminator": [
-        176,
-        95,
-        4,
-        118,
-        91,
-        177,
-        125,
-        232
+        231,
+        52,
+        198,
+        157,
+        140,
+        215,
+        152,
+        242
       ]
     }
   ],
   "types": [
     {
-      "name": "NewAccount",
+      "name": "salaryAccount",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "data",
+            "name": "salary",
             "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
           }
         ]
       }
     }
   ]
-}
+};
